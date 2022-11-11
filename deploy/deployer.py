@@ -119,6 +119,10 @@ def make_envsecret(env: str, env_var_name: str):
         }
     }
 
+def make_mntsecret_name(env: str, filepath: str):
+    filepath_slug = filepath.lower().replace('/', '-')
+    return f"mntsecret-{env}-{filepath_slug}"
+
 
 @release_cli.command('create')
 @click.option("--env", default=DEFAULT_ENV)
@@ -148,7 +152,7 @@ def new_cmd(env, tag):
         HELM_CHART_DIR,
         "--set", f"image.tag={tag}",
         "--set-json", f'imagePullSecrets={img_p_secrets_json}',
-        "--set-json", f'envs={envs_json}',
+        "--set-json", f'env={envs_json}',
         f"--values={release_values_file}",
     )
 
@@ -205,7 +209,13 @@ def list_cmd():
     )
 
 
-def _set_secret_cmd(secret_name: str, secret_value: str):
+def _set_secret_multi_cmd(secret_name: str, secrets: Dict[str,str]):
+
+    from_literals = [
+        f'--from-literal={secret_key}={secret_value}'
+        for secret_key, secret_value in secrets.items()
+    ]
+
     out = exec_io(
         'kubectl',
         'create',
@@ -216,7 +226,7 @@ def _set_secret_cmd(secret_name: str, secret_value: str):
         '-o',
         'yaml',
         secret_name,
-        f'--from-literal=value={secret_value}',
+        *from_literals,
     )
     exec_io(
         'kubectl', 
@@ -226,24 +236,33 @@ def _set_secret_cmd(secret_name: str, secret_value: str):
         input=out
     )
 
+
+def _set_secret_cmd(secret_name: str, secret_value: str):
+    return _set_secret_multi_cmd(secret_name, {"value": secret_value})
+
+
 @secret_cli.command('set')
 @click.argument("secret_name")
 @click.argument("secret_value")
 def set_secret_cmd(secret_name, secret_value):
     _set_secret_cmd(secret_name, secret_value)
 
+
 @secret_cli.command('get')
+@click.option('--no-parse')
 @click.argument("secret_name")
-def get_secret_cmd(secret_name):
-    output = check_output([
+def get_secret_cmd(no_parse, secret_name):
+    extras = [] if no_parse else ["-o=jsonpath='{.data.value}'"]
+    output = exec_io(
         "kubectl",
         "get",
         "secret",
         f'--namespace={NAMESPACE}',
         secret_name,
-        "-o=jsonpath='{.data.value}'",  # This also comes from GENERIC_SECRET_FIELD_NAME
-    ])
+          # This also comes from GENERIC_SECRET_FIELD_NAME
+        *extras)
     print(b64decode(output).decode('utf8'))
+
 
 @secret_cli.command('rm')
 @click.argument("secret_name")
@@ -284,9 +303,29 @@ def set_envvar_cmd(env, dotenv_file):
         _set_secret_cmd(secret_name, envvar_value)
 
 
-from dotenv import dotenv_values
+@cli.group("mntsecret")
+def mntsecret_cli():
+    ...
+ 
 
-config = dotenv_values(".env")  # config = {"USER": "foo", "EMAIL": "foo@example.org"}
+@mntsecret_cli.command("set")
+@click.option("--env", default=DEFAULT_ENV)
+@click.argument("remote_filepath")
+@click.argument("local_filepath")
+def set_mntsecret_cli(env, remote_filepath, local_filepath):
+    
+    dirname = os.path.dirname(remote_filepath)
+    if not dirname:
+        raise RuntimeError("You must specify a full remote path, not just a filename")
+    basename = os.path.basename(remote_filepath)
+
+    with open(local_filepath, 'r') as fp:
+        contents = fp.read()
+
+    name = make_mntsecret_name(env, dirname)
+    _set_secret_multi_cmd(name, { basename: contents})
+
+
 
 cli.add_command(release_cli)
 cli.add_command(secret_cli)

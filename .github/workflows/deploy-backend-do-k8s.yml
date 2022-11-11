@@ -47,7 +47,7 @@ jobs:
     #   run: cd $BUILD_DIR && yarn --frozen-lockfile && yarn test
 
     # Building
-    - name: '[Build] Build docker image'
+    - name: '[Build] Build and push docker image'
       run: |-
         docker build \
           --build-arg=APP_VER=$TAG \
