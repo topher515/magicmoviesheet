@@ -1,0 +1,6 @@
+.env
+.pytest_cache
+*.egg-info
+client_secret*
+.DS_Store
+token.json
