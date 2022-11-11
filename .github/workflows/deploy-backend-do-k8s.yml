@@ -53,15 +53,10 @@ jobs:
           --build-arg=APP_VER=$TAG \
           --tag "$IMAGE:$TAG" \
           --tag "$IMAGE:latest-${GITHUB_REF_NAME}" \
-          $BUILD_DIR
+          $BUILD_DIR &&
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin &&
+        docker push --all-tags "${{ env.IMAGE }}"
 
-    - name: '[Build] Login to container registry'
-      shell: bash
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-    - name: '[Build] Push built image' 
-      shell: bash
-      run: docker push --all-tags "${{ env.IMAGE }}"
 
     # - name: '[Build] Install DigitalOcean cli'
     #   if: env.DEPLOY == 'true'
