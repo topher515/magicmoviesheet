@@ -1,0 +1,18 @@
+env:
+  - name: "DB_URI"
+    valueFrom:
+      secretKeyRef:
+        key:  value
+        name: puzzliveio-dev-db-uri
+  - name: "AUTH_SECRET_KEY"
+    valueFrom:
+      secretKeyRef:
+        key:  value
+        name: puzzliveio-dev-auth-secret-key
+  - name: "SENDINBLUE_API_KEY"
+    valueFrom:
+      secretKeyRef:
+        key:  value
+        name: puzzliveio-dev-sendinblue-api-key
+  - name: "ENV_NAME"
+    value: "dev"

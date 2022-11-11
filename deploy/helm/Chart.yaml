@@ -1,0 +1,15 @@
+apiVersion: v2
+appVersion: 1.1.0  # App being deploy
+version: 8.0.0  # Chart Version
+description: puzz.live backend
+name: puzzliveio
+kubeVersion: ">=1.16.0-0"
+dependencies:
+- name: common
+  repository: https://library-charts.k8s-at-home.com
+  version: 4.0.0
+# - name: cert-manager
+#   version: v1.8.0
+#   repository: https://charts.jetstack.io
+#   alias: cert-manager
+#   condition: cert-manager.enabled

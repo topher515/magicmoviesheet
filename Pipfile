@@ -12,6 +12,7 @@ google-auth-httplib2 = "*"
 google-auth-oauthlib = "*"
 pytest = "*"
 pytz = "*"
+click = "*"
 
 [dev-packages]
 

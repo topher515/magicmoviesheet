@@ -4,3 +4,5 @@
 client_secret*
 .DS_Store
 token.json
+requirements.txt
+charts
