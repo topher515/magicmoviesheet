@@ -58,7 +58,6 @@ def fetch_movie_imdb_id(movie_descriptor: str):
 
     headers = {
         "X-RapidAPI-Key": os.getenv("RAPID_API_KEY"),
-        "X-RapidAPI-Key": "tayrtv8lanfaywe68wdwr35cqq7j4r",
         "X-RapidAPI-Host": "bing-web-search1.p.rapidapi.com"
     }
 
