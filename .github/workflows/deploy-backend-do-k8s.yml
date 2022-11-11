@@ -1,0 +1,75 @@
+# Environment Setup needed:
+#
+# - Set DIGITALOCEAN_ACCESS_TOKEN in github secrets
+# - Set CLUSTER_NAME in github secrets
+
+name:  magicmoviesheet Backend Deploy
+
+concurrency: 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+on:  
+  push:
+
+env:
+  APP_NAME: magicmoviesheet
+  IMAGE: ghcr.io/${{ github.repository_owner }}/magicmoviesheet
+  BUILD_DIR: .
+  HELM_DIR: deploy/helm
+
+jobs:
+
+  build-test-deploy:
+
+    name: magicmoviesheet Backend Build
+    runs-on: ubuntu-latest
+
+    steps:
+    # - name: '[Pre] Cancel Previous Runs'
+    #   uses: styfle/cancel-workflow-action@0.9.1
+    #   with:
+    #     access_token: ${{ github.token }}
+        
+    - name: '[Pre] Checkout'
+      uses: actions/checkout@v2
+
+    - name: '[Pre] Set environment variables'
+      uses: ./.github/actions/get-release-metadata-env
+
+    # # Testing
+    # - name: '[Test] Install node'
+    #   uses: actions/setup-node@v2
+    #   with:
+    #     node-version: '14'
+
+    # - name: '[Test] Run backend tests'
+    #   run: cd $BUILD_DIR && yarn --frozen-lockfile && yarn test
+
+    # Building
+    - name: '[Build] Build docker image'
+      run: |-
+        docker build \
+          --build-arg=APP_VER=$TAG \
+          --tag "$IMAGE:$TAG" \
+          --tag "$IMAGE:latest-${GITHUB_REF_NAME}" \
+          $BUILD_DIR
+
+    # - name: '[Build] Install DigitalOcean cli'
+    #   if: env.DEPLOY == 'true'
+    #   uses: digitalocean/action-doctl@v2
+    #   with:
+    #     token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    # - name: '[Deploy] Push and deploy'
+    #   if: env.DEPLOY == 'true'
+    #   uses: topher515/deployactions-push-ghcr.io-release-digitalocean-k8s@v1.2.0
+    #   with:
+    #     image: ${{ env.IMAGE }}
+    #     cluster-name: "${{ secrets.CLUSTER_NAME }}"
+    #     helm-chart-dir: "${{ env.HELM_DIR }}"
+    #     tag: ${{ env.TAG }}
+    #     release-name: "${{ env.APP_NAME }}-${{ env.ENV_NAME }}"
+    #     release-values-file: "${{ env.HELM_DIR }}/${{ env.ENV_NAME }}/values.yaml"
+    #     github-token: ${{ secrets.GITHUB_TOKEN }}
+    #     namespace: 'puzzlive'

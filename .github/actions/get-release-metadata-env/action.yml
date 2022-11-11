@@ -1,0 +1,29 @@
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-run-steps-action#testing-out-your-action-in-a-workflow
+# https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+# https://stackoverflow.com/questions/63596379/composite-run-steps-github-actions-error-an-action-could-not-be-found-at-the-u
+
+name: 'Get release metadata env vars'
+description: 'Get release metadata env vars'
+runs:
+  using: "composite"
+  steps:
+    - run: |-
+        if [ $GITHUB_REF == "refs/heads/main" ]
+        then
+          ENV_NAME=prod
+          if [ $GITHUB_EVENT_NAME == 'push' ]
+          then
+            DEPLOY=true
+          fi
+        elif [ $GITHUB_REF == "refs/heads/develop" ]
+        then
+          ENV_NAME=dev
+          if [ $GITHUB_EVENT_NAME == 'push' ]
+          then
+            DEPLOY=true
+          fi
+        fi
+        echo "DEPLOY=$DEPLOY" >> $GITHUB_ENV
+        echo "ENV_NAME=$ENV_NAME" >> $GITHUB_ENV
+        echo "TAG=$(echo $GITHUB_SHA | head -c7)" >> $GITHUB_ENV
+      shell: bash
