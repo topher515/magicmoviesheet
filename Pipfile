@@ -11,6 +11,7 @@ google-api-python-client-stubs = "*"
 google-auth-httplib2 = "*"
 google-auth-oauthlib = "*"
 pytest = "*"
+pytz = "*"
 
 [dev-packages]
 

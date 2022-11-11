@@ -9,39 +9,6 @@ from typing import TypedDict
 class MovieNotFound(BaseException):
     pass
 
-# Example
-# {
-#   "Title": "The Cabinet of Dr Caligari",
-#   "Year": "1948",
-#   "Rated": "N/A",
-#   "Released": "05 Jul 1948",
-#   "Runtime": "5 min",
-#   "Genre": "Short, Family",
-#   "Director": "N/A",
-#   "Writer": "Roger Manvell",
-#   "Actors": "Roger Manvell",
-#   "Plot": "N/A",
-#   "Language": "English",
-#   "Country": "United Kingdom",
-#   "Awards": "N/A",
-#   "Poster": "https://m.media-amazon.com/images/M/MV5BZmEzYzlmMmYtYTI2Mi00OWY1LWI2MjQtMjZmM2M3ODNmMWZlXkEyXkFqcGdeQXVyMjk1ODk3NzE@._V1_SX300.jpg",
-#   "Ratings": [
-#     {
-#       "Source": "Internet Movie Database",
-#       "Value": "9.2/10"
-#     }
-#   ],
-#   "Metascore": "N/A",
-#   "imdbRating": "9.2",
-#   "imdbVotes": "8",
-#   "imdbID": "tt5444282",
-#   "Type": "movie",
-#   "DVD": "N/A",
-#   "BoxOffice": "N/A",
-#   "Production": "N/A",
-#   "Website": "N/A",
-#   "Response": "True"
-# }
 
 class MovieMeta(TypedDict):
 
@@ -96,10 +63,6 @@ def fetch_movie_imdb_id(movie_descriptor: str):
     }
 
     resp = requests.request("GET", url, headers=headers, params=querystring)
-    if resp.status_code == 404:
-        raise MovieNotFound(movie_descriptor)
-
-    resp.raise_for_status()
 
     for webpage in resp.json()["webPages"]["value"]:
 
@@ -125,6 +88,8 @@ def fetch_movie_meta_via_movie_details(imdb_id: str) -> MovieMeta:
     }
 
     resp = requests.request("GET", url, headers=headers, params=querystring)
+    if resp.status_code == 404:
+        raise MovieNotFound(imdb_id)
 
     resp.raise_for_status()
     data = resp.json()
@@ -133,7 +98,7 @@ def fetch_movie_meta_via_movie_details(imdb_id: str) -> MovieMeta:
         Title=data["title"],
         Year=data["release_year"],
         Genre=", ".join(data["genres"][:2]),
-        Director=data["director_names"][0],
+        Director=(data["director_names"] or [''])[0],
         imdbId=data["id"],
         imdbRating=data["rating"],
         Poster=data["image"]
