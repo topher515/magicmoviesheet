@@ -57,11 +57,13 @@ def fetch_movie_imdb_id(movie_descriptor: str):
     querystring = {"q":f"site:imdb.com {movie_descriptor}","mkt":"en-us","safeSearch":"Off"}
 
     headers = {
+        "X-BingApis-SDK": "true",
         "X-RapidAPI-Key": os.getenv("RAPID_API_KEY"),
         "X-RapidAPI-Host": "bing-web-search1.p.rapidapi.com"
     }
 
     resp = requests.request("GET", url, headers=headers, params=querystring)
+    resp.raise_for_status()
 
     for webpage in resp.json()["webPages"]["value"]:
 
