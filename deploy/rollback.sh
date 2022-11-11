@@ -1,8 +1,0 @@
-#!/bin/bash
-
-NAMESPACE="$GITOPS_K8S_NAMESPACE"
-APP_PREFIX="$GITOPS_K8S_APP_PREFIX"
-ENV="$1"
-REVISION="$2"
-set -x
-helm rollback --namespace=$NAMESPACE $APP_PREFIX-$ENV $REVISION

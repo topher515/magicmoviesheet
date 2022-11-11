@@ -1,13 +1,4 @@
 # See: https://github.com/k8s-at-home/library-charts/blob/main/charts/stable/common/values.yaml
-
-image:
-  repository: ghcr.io/topher515/puzzlive-io
-  # repository: specified at deploy time also
-  # tag: specified at deploy time
-  pullPolicy: Always
-  
-imagePullSecrets:
-  - name: k8s-docker-registry-secret-name
     
 service:
   main:

@@ -1,7 +1,0 @@
-#!/bin/bash
-
-NAMESPACE="$GITOPS_K8S_NAMESPACE"
-APP_PREFIX="$GITOPS_K8S_APP_PREFIX"
-ENV="$1"
-set -x
-helm history $APP_PREFIX-$ENV --namespace=$NAMESPACE
