@@ -1,2 +1,0 @@
-# Do not remove--this is necessary for k8s-at-home chart to work
-{{ include "common.all" . }}

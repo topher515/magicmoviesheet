@@ -17,7 +17,7 @@ spec:
       {{- end }}
       containers:
       - name: {{ .Release.Name }}-run-once
-        image: "{{ .Values.image.tag }}"  
+        image: "{{ .Values.image }}"  
         imagePullPolicy: Always
         env:
           {{- toYaml .Values.env | nindent 12 }}     
