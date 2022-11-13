@@ -5,18 +5,17 @@ import random
 import string
 import subprocess
 import sys
-from asyncore import write
 from base64 import b64decode
+from collections import defaultdict
 from pathlib import Path
 from subprocess import CalledProcessError, check_call, check_output
-from tempfile import NamedTemporaryFile, TemporaryFile
-from typing import Dict
+from tempfile import NamedTemporaryFile
+from typing import Dict, List, Optional, TypedDict
 
 import click
 import click.exceptions
 import yaml
 from dotenv import dotenv_values
-from pyparsing import Optional
 
 
 class bcolors:
@@ -44,6 +43,30 @@ NAMESPACE = os.getenv('DEPLOYER_K8S_NAMESPACE')
 
 
 GENERIC_SECRET_FIELD_NAME = "value"
+
+
+class MntSecretFileMeta(TypedDict):
+    filename: str
+    local_path: str
+    # remote_path: str
+    # remote_dir: str
+
+# valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+# char_limit = 255
+
+# def clean_filename(filename, whitelist=valid_filename_chars, replace=' '):
+#     # replace spaces
+#     for r in replace:
+#         filename = filename.replace(r,'_')
+    
+#     # keep only valid ascii chars
+#     cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode()
+    
+#     # keep only whitelisted chars
+#     cleaned_filename = ''.join(c for c in cleaned_filename if c in whitelist)
+#     if len(cleaned_filename)>char_limit:
+#         print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
+#     return cleaned_filename[:char_limit]    
 
 def exec(*args):
     print(f"{bcolors.DEMPH}Running command: {args}{bcolors.ENDC}")
@@ -115,9 +138,11 @@ def _set_docker_registry_secret(secret_name, email, username, password):
 def registry_cmd(secret_name, email, username, password):
     _set_docker_registry_secret(secret_name, email, username, password)
 
-# @cli.group("release")
-# def release_cli():
-#     ...
+@cli.group("release")
+def release_cli():
+    ...
+
+
 
 
 def make_envsecret_name(env: str, env_var_name: str):
@@ -136,13 +161,16 @@ def make_envsecret(env: str, env_var_name: str):
         }
     }
 
+
+VOL_MNT_WHITELIST = '-' + string.ascii_lowercase + string.digits
+
 def make_mntsecret_name(env: str, filepath: str):
-    filepath_slug = filepath.lower().replace('/', '-')
-    return f"mntsecret-{env}-{filepath_slug}"
+    slug = ''.join(x if x in VOL_MNT_WHITELIST else '-' for x in filepath.lower())
+    return f"mntsecret-{env}-{slug}"
 
 
-def make_mntsecret_volume_data(env: str, filepath: str):
-    name = make_mntsecret_name(env, filepath)
+def make_mntsecret_volume_data(env: str, mntdir: str):
+    name = make_mntsecret_name(env, mntdir)
     vol = {
         "name": name,
         "secret": {
@@ -150,7 +178,7 @@ def make_mntsecret_volume_data(env: str, filepath: str):
         }
     }
     vol_mnt = {
-        "mountPath": filepath,
+        "mountPath": mntdir,
         "name": name,
         "readOnly": True
     }
@@ -294,10 +322,10 @@ def set_secret_cmd(secret_name, secret_value):
 
 
 @secret_cli.command('get')
-@click.option('--no-parse')
+@click.option('--no-parse', is_flag=True)
 @click.argument("secret_name")
 def get_secret_cmd(no_parse, secret_name):
-    extras = [] if no_parse else ["-o=jsonpath='{.data.value}'"]
+    extras = ["-o=jsonpath='{.data}'"] if no_parse else ["-o=jsonpath='{.data.value}'"]
     output = exec_io(
         "kubectl",
         "get",
@@ -306,7 +334,10 @@ def get_secret_cmd(no_parse, secret_name):
         secret_name,
           # This also comes from GENERIC_SECRET_FIELD_NAME
         *extras)
-    print(b64decode(output).decode('utf8'))
+    if no_parse:
+        print(output.decode('utf8'))
+    else:
+        print(b64decode(output).decode('utf8'))
 
 
 @secret_cli.command('rm')
@@ -357,18 +388,36 @@ def mntsecret_cli():
     ...
  
 
-def _set_file_as_secret(env, remote_filepath, local_filepath):
-    print(f"{bcolors.OKBLUE}Will make local file '{local_filepath}' available at '{remote_filepath}' {bcolors.ENDC}")
-    dirname = os.path.dirname(remote_filepath)
-    if not dirname:
+def _set_files_as_secret(env, remote_dir, file_metas: List[MntSecretFileMeta]):
+
+    if not remote_dir:
         raise RuntimeError("You must specify a full remote path, not just a filename")
+
+    secret_name = make_mntsecret_name(env, remote_dir)
+    secret_contents = {}
+
+    for filemeta in file_metas:
+        local_filepath = filemeta["local_path"]
+        with open(local_filepath, 'r') as fp:
+            contents = fp.read()
+        secret_contents[filemeta["filename"]] = contents
+        print(f"{bcolors.OKBLUE}Will make local file '{local_filepath}' available in dir '{remote_dir}' as '{filemeta['filename']}'{bcolors.ENDC}")
+    
+    _set_secret_multi_cmd(secret_name, secret_contents)
+
+
+def _set_file_as_secret(env, remote_filepath, local_filepath):
+
+    dirname = os.path.dirname(remote_filepath)
     basename = os.path.basename(remote_filepath)
+    _set_files_as_secret(env, dirname, [{"filename":basename, "local_path": local_filepath}])
 
-    with open(local_filepath, 'r') as fp:
-        contents = fp.read()
+    # with open(local_filepath, 'r') as fp:
+    #     contents = fp.read()
 
-    name = make_mntsecret_name(env, dirname)
-    _set_secret_multi_cmd(name, { basename: contents})
+    # name = make_mntsecret_name(env, dirname)
+    # _set_secret_multi_cmd(name, { basename: contents})
+
 
 @mntsecret_cli.command("set")
 @click.option("--env", default=DEFAULT_ENV)
@@ -389,6 +438,26 @@ def _iter_filepaths(dirpath: Path):
             continue
         remote_path = str(local_path).split(str(dirpath))[1]
         yield local_path, remote_path
+
+
+
+def _get_file_metas(dirpath: Path) -> Dict[str, List[MntSecretFileMeta]]:
+
+    dir_bucket = defaultdict(list)
+
+    for local_path in dirpath.rglob('*'):
+        if local_path.is_dir():
+            continue
+
+        remote_path = Path(str(local_path).split(str(dirpath))[1])
+        dir_bucket[str(remote_path.parent)].append(MntSecretFileMeta(
+            filename=local_path.name,
+            local_path=str(local_path),
+            # remote_path=str(remote_path),
+            # remote_dir=str(remote_path.parent)
+        ))
+    return dict(dir_bucket)
+        
 
 
 def load_wiz_config(dirpath: Path, key: Optional[str] = None):
@@ -470,17 +539,21 @@ def wiz_push(dirpath):
     Push the secrets data generated from this wiz env directory
     '''
 
+    dirpath = Path(dirpath)
     env = load_wiz_config(dirpath, "envName")
 
     # Handle push .env file
-    dirpath = Path(dirpath)
     wizdir = dirpath / "wiz"
     dotenv_file = wizdir / '.env'
     _push_envfile(env, str(dotenv_file))
 
     # Handle secret files for mnting
-    for local_path, remote_path in _iter_filepaths(wizdir / 'secretfiles'):
-        _set_file_as_secret(env, remote_path, local_path)
+
+    for remote_dir, file_metas in _get_file_metas(wizdir / 'secretfiles').items():
+        _set_files_as_secret(env, remote_dir, file_metas)
+
+    # for local_path, remote_path in _iter_filepaths():
+    #     _set_file_as_secret(env, remote_path, local_path)
 
 
 def _wiz_genvalues(dirpath):
@@ -489,12 +562,12 @@ def _wiz_genvalues(dirpath):
     '''
 
     dirpath = Path(dirpath)
-    wizpath = dirpath / 'wiz'
+    wizdir = dirpath / 'wiz'
 
     env = load_wiz_config(dirpath, "envName")
     image_pull_secret_name = load_wiz_config(dirpath, "imagePullSecret")
 
-    dotenv_file = wizpath / '.env'
+    dotenv_file = wizdir / '.env'
     dotenv_vals: Dict[str,str] = dotenv_values(dotenv_file)
 
     values = {}
@@ -502,10 +575,16 @@ def _wiz_genvalues(dirpath):
 
     vols = []
     vol_mnts = []
-    for local_path, remote_path in _iter_filepaths(wizpath / 'secretfiles'):
-        vol, vol_mnt = make_mntsecret_volume_data(env, remote_path)
+
+    for remote_dir, file_metas in _get_file_metas(wizdir / 'secretfiles').items():
+        vol, vol_mnt = make_mntsecret_volume_data(env, remote_dir)
         vols.append(vol)
         vol_mnts.append(vol_mnt)
+
+    # for local_path, remote_path in _iter_filepaths(wizpath / 'secretfiles'):
+    #     vol, vol_mnt = make_mntsecret_volume_data(env, remote_path)
+    #     vols.append(vol)
+    #     vol_mnts.append(vol_mnt)
 
     values = {
         "env": envs,
@@ -542,7 +621,8 @@ def wiz_release(dirpath, image):
     )
 
     with NamedTemporaryFile('w') as values_file:
-
+        json.dump(values, values_file)
+        values_file.flush()
         exec(
             "helm", 
             "upgrade",  # Perform install or upgrade
@@ -556,7 +636,7 @@ def wiz_release(dirpath, image):
 
 
 cli.add_command(wiz_cli)
-# cli.add_command(release_cli)
+cli.add_command(release_cli)
 cli.add_command(secret_cli)
 cli.add_command(envsecret_cli)
 

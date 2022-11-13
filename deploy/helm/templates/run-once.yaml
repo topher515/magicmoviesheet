@@ -15,13 +15,17 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      restartPolicy: Never
       containers:
       - name: {{ .Release.Name }}-run-once
         image: "{{ .Values.image }}"  
         imagePullPolicy: Always
         env:
           {{- toYaml .Values.env | nindent 12 }}     
+        volumeMounts:
+          {{- toYaml .Values.volumeMounts | nindent 11 }}  
 
-      restartPolicy: Never
+      volumes:
+        {{- toYaml .Values.volumes | nindent 10 }}    
 
   backoffLimit: 4
