@@ -23,7 +23,9 @@ spec:
         env:
           {{- toYaml .Values.env | nindent 12 }}     
         volumeMounts:
-          {{- toYaml .Values.volumeMounts | nindent 11 }}  
+          {{- toYaml .Values.volumeMounts | nindent 12 }}  
+        # args:
+        # - foo
 
       volumes:
         {{- toYaml .Values.volumes | nindent 10 }}    

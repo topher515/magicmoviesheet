@@ -97,8 +97,9 @@ class Sheet:
 
 
 
+# Deprecated: here for historical purposes
 @cache
-def get_creds():
+def _get_creds_with_oauth():
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -119,6 +120,10 @@ def get_creds():
     
     return creds
 
+@cache
+def get_creds():
+    creds, _ = google.auth.default()
+    return creds
 
 def get_sheets_service():
     creds = get_creds()
