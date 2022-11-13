@@ -17,14 +17,12 @@
 
 ## Create secrets
 
-- Setup docker registry secrets with `./deployer wiz config`
-- Push secrets from helm env: e.g,: `./deployer wiz push helm/dev`
-
-### DEPRECATED
-- Set docker registry secret so k8s can pull from ghrc.io
-    -  Create a PAT https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token
+- Create a PAT https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token
+- Get deployk8s: https://github.com/topher515/deployk8s
+- Setup docker registry secrets with `deployk8s wiz config`
+- Push secrets from helm env: e.g,: `deployk8s wiz push helm/dev`
  
- - Use the `secret` and `envsecret` command in `./deployer.py`
+ - Use `deployk8s 
 
 # Run Wiz Deployer
 
@@ -32,20 +30,15 @@ Setup wiz env dir to looks like:
 
 - `helm`
   - `{envname}`
-    - `wiz`
-      - `wiz.yml`
-      - `.env`, looks like:
-        ---
-        RAPID_API_KEY=c43e633c6...rapidapi_apikey...37d2d572
-        GOOGLE_APPLICATION_CREDENTIALS=/var/google_credential.json
-        MOVIE_SPREADSHEET_ID=1KLIddsN...spreadsheetid...0fifd2RlRMo
-        ---
-      - `secretfiles`
-        - `var`
-          - `google_credential.json`  # Service robot account creds
+    - `wiz.yml`
+    - `.env`, looks like:
+      ---
+      RAPID_API_KEY=c43e633c6...rapidapi_apikey...37d2d572
+      GOOGLE_APPLICATION_CREDENTIALS=/var/google_credential.json
+      MOVIE_SPREADSHEET_ID=1KLIddsN...spreadsheetid...0fifd2RlRMo
+      ---
+    - `secretfiles`
+      - `var`
+        - `google_credential.json`  # Service robot account creds
 
-Use the `./deployer.py wiz` subcommand to do deploy stuff
-
-- To see what helm values with be deployed for an env dir `./deployer.py wiz genvalues helm/dev`
-
-- Something like `./deployer.py wiz release helm/dev ghcr.io/topher515/magicmoviesheet:latest-main`
+- See deployk8s docs: https://github.com/topher515/deployk8s
