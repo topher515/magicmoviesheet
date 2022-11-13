@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import json
 import os
 import random
@@ -8,7 +9,7 @@ import sys
 from base64 import b64decode
 from collections import defaultdict
 from pathlib import Path
-from subprocess import CalledProcessError, check_call, check_output
+from subprocess import CalledProcessError, check_call
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, TypedDict
 
@@ -30,7 +31,6 @@ class bcolors:
     DEMPH = '\033[1m'
     UNDERLINE = '\033[4m'
 
-# HELM_CHART_DIR = "./helm"
 
 ENV_NAMES = ["dev", "prod"]
 DEFAULT_ENV = "dev"
@@ -39,8 +39,6 @@ DEFAULT_ENV = "dev"
 APP_NAME = os.getenv('DEPLOYER_APP_PREFIX')
 NAMESPACE = os.getenv('DEPLOYER_K8S_NAMESPACE')
 
-# DOCKER_REG_SECRET_NAME = f"deployer-docker-reg-creds-{APP_NAME}"
-
 
 GENERIC_SECRET_FIELD_NAME = "value"
 
@@ -48,25 +46,7 @@ GENERIC_SECRET_FIELD_NAME = "value"
 class MntSecretFileMeta(TypedDict):
     filename: str
     local_path: str
-    # remote_path: str
-    # remote_dir: str
-
-# valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-# char_limit = 255
-
-# def clean_filename(filename, whitelist=valid_filename_chars, replace=' '):
-#     # replace spaces
-#     for r in replace:
-#         filename = filename.replace(r,'_')
-    
-#     # keep only valid ascii chars
-#     cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode()
-    
-#     # keep only whitelisted chars
-#     cleaned_filename = ''.join(c for c in cleaned_filename if c in whitelist)
-#     if len(cleaned_filename)>char_limit:
-#         print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
-#     return cleaned_filename[:char_limit]    
+ 
 
 def exec(*args):
     print(f"{bcolors.DEMPH}Running command: {args}{bcolors.ENDC}")
@@ -86,8 +66,6 @@ def exec_io(*args, **kwargs):
 
 def make_release_name(env: str):
     return f"{APP_NAME}-{env}"
-
-
 
 
 @click.group()
@@ -143,8 +121,6 @@ def release_cli():
     ...
 
 
-
-
 def make_envsecret_name(env: str, env_var_name: str):
     env_var_slug = env_var_name.lower().replace('_', '-')
     return f"envsecret-{env}-{env_var_slug}"
@@ -183,40 +159,6 @@ def make_mntsecret_volume_data(env: str, mntdir: str):
         "readOnly": True
     }
     return vol, vol_mnt
-
-
-# @release_cli.command('create')
-# @click.option("--env", default=DEFAULT_ENV)
-# @click.argument("image_pull_secret_name")
-# @click.argument("tag")
-# def release_new_cmd(env, image_pull_secret_name, tag):
-
-#     release_values_file=f"{HELM_CHART_DIR}/{env}/values.yaml"
-
-#     env_names_file=f"{HELM_CHART_DIR}/{env}/env_names.yaml"
-#     with open(env_names_file, 'r') as fp:
-#         env_names = yaml.safe_load(fp)
-
-#     envs_json = json.dumps([make_envsecret(env, env_name) for env_name in env_names])
-#     img_p_secrets_json = json.dumps([{"name": f"{image_pull_secret_name}"}])
-
-
-#     print(f'{bcolors.OKCYAN}Deploying tag="{tag}" to env="{env}"...\n{bcolors.ENDC}')
-#     exec(
-#         "helm", "dependency", "update", HELM_CHART_DIR
-#     )
-#     exec(
-#         "helm", 
-#         "upgrade",  # Perform install or upgrade
-#         "--create-namespace",  # Create namespace if it doesnt exist
-#         f"--namespace={NAMESPACE}",
-#         "--install", make_release_name(env),
-#         HELM_CHART_DIR,
-#         "--set", f"image.tag={tag}",
-#         "--set-json", f'imagePullSecrets={img_p_secrets_json}',
-#         "--set-json", f'env={envs_json}',
-#         f"--values={release_values_file}",
-#     )
 
 
 @release_cli.command('nuke')
@@ -453,8 +395,6 @@ def _get_file_metas(dirpath: Path) -> Dict[str, List[MntSecretFileMeta]]:
         dir_bucket[str(remote_path.parent)].append(MntSecretFileMeta(
             filename=local_path.name,
             local_path=str(local_path),
-            # remote_path=str(remote_path),
-            # remote_dir=str(remote_path.parent)
         ))
     return dict(dir_bucket)
         
@@ -517,20 +457,6 @@ def wiz_setup(env, dirpath):
         password = click.prompt("- Password?: ")
         _set_docker_registry_secret(image_pull_secret_name, email, username, password)
 
-    # # Handle image pull secret
-
-    # # Handle push .env file
-    # dirpath = Path(dirpath)
-    # wizdir = dirpath / "wiz"
-    # dotenv_file = wizdir / '.env'
-    # _push_envfile(env, str(dotenv_file))
-
-    # # Handle secret files for mnting
-    # for local_path, remote_path in _iter_filepaths(wizdir / 'secretfiles'):
-    #     _set_file_as_secret(env, remote_path, local_path)
-
-
-
 
 @wiz_cli.command("push")
 @click.argument("dirpath")
@@ -548,12 +474,8 @@ def wiz_push(dirpath):
     _push_envfile(env, str(dotenv_file))
 
     # Handle secret files for mnting
-
     for remote_dir, file_metas in _get_file_metas(wizdir / 'secretfiles').items():
         _set_files_as_secret(env, remote_dir, file_metas)
-
-    # for local_path, remote_path in _iter_filepaths():
-    #     _set_file_as_secret(env, remote_path, local_path)
 
 
 def _wiz_genvalues(dirpath):
@@ -580,11 +502,6 @@ def _wiz_genvalues(dirpath):
         vol, vol_mnt = make_mntsecret_volume_data(env, remote_dir)
         vols.append(vol)
         vol_mnts.append(vol_mnt)
-
-    # for local_path, remote_path in _iter_filepaths(wizpath / 'secretfiles'):
-    #     vol, vol_mnt = make_mntsecret_volume_data(env, remote_path)
-    #     vols.append(vol)
-    #     vol_mnts.append(vol_mnt)
 
     values = {
         "env": envs,
@@ -643,4 +560,3 @@ cli.add_command(envsecret_cli)
 
 if __name__ == "__main__":
    cli() 
-

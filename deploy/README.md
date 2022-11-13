@@ -26,7 +26,23 @@
  
  - Use the `secret` and `envsecret` command in `./deployer.py`
 
-# Run Deploy
+# Run Wiz Deployer
+
+Setup wiz env dir to looks like:
+
+- `helm`
+  - `{envname}`
+    - `wiz`
+      - `wiz.yml`
+      - `.env`, looks like:
+        ---
+        RAPID_API_KEY=c43e633c6...rapidapi_apikey...37d2d572
+        GOOGLE_APPLICATION_CREDENTIALS=/var/google_credential.json
+        MOVIE_SPREADSHEET_ID=1KLIddsN...spreadsheetid...0fifd2RlRMo
+        ---
+      - `secretfiles`
+        - `var`
+          - `google_credential.json`  # Service robot account creds
 
 Use the `./deployer.py wiz` subcommand to do deploy stuff
 
