@@ -1,33 +1,34 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Release.Name }}-run-once
+  name: {{ .Release.Name }}-run-on-install
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}-run-once
+    app.kubernetes.io/name: {{ .Release.Name }}-run-on-install
   annotations:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook": pre-upgrade,pre-install
 
 spec:
+  backoffLimit: 4
   template:
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      restartPolicy: Never
+
       containers:
-      - name: {{ .Release.Name }}-run-once
+      - name: {{ .Release.Name }}-run-on-install
         image: "{{ .Values.image }}"  
         imagePullPolicy: Always
         env:
           {{- toYaml .Values.env | nindent 12 }}     
         volumeMounts:
           {{- toYaml .Values.volumeMounts | nindent 12 }}  
-        # args:
-        # - foo
+
+
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      restartPolicy: Never
 
       volumes:
         {{- toYaml .Values.volumes | nindent 10 }}    
-
-  backoffLimit: 4
