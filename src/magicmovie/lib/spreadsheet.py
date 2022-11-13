@@ -48,9 +48,11 @@ class Sheet:
 
     def fetch(self):
         print(f"Fetching sheet {self.spreadsheet_id}", file=sys.stderr)
+        # https://googleapis.github.io/google-api-python-client/docs/dyn/sheets_v4.spreadsheets.values.html
         result = get_sheets_service().spreadsheets().values().get(
-        spreadsheetId=self.spreadsheet_id, range=self.range).execute()
+        spreadsheetId=self.spreadsheet_id, range=self.range).execute(num_retries=1)
         self.rows = result['values']
+        print(f"Successfully fetched sheet", file=sys.stderr)
         self._process_rows()
 
     def save(self):
