@@ -96,14 +96,13 @@ def fetch_movie_meta_via_movie_details(imdb_id: str) -> MovieMeta:
     data = resp.json()
 
     return MovieMeta(
-        Title=data["title"],
-        Year=data["release_year"],
+        Title=data.get("title"),
+        Year=data.get("release_year"),
         Genre=", ".join(data["genres"][:2]),
         Director=(data["director_names"] or [''])[0],
         imdbId=data["id"],
-        imdbRating=data["rating"],
-        Poster=data["image"]
-
+        imdbRating=data.get("rating"),
+        Poster=data.get("image")
     )
 
 
